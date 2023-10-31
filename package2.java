@@ -7,7 +7,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+
 import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.json.Json;
+
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -86,6 +90,8 @@ public class package2 {
     private static JScrollPane packageListScrollPane;
 
     private static String selectedDirectoryPath = null;
+    private static DefaultListModel<String> installedPackagesModel = new DefaultListModel<>();
+    private static JList<String> installedPackagesList = new JList<>(installedPackagesModel);
     private static File sd;
 
     public static void main(String[] args) {
@@ -112,13 +118,6 @@ public class package2 {
         open = createButton("📂 Open");
         create = createButton("+ Create");
         addPackage = createButton("+ Add Package");
-        addPackage.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Implement code to add a package here
-                // For example, you can open a dialog to input the package name and run 'npm install' to add it
-            }
-        });
 
         open.addActionListener(new ActionListener() {
             @Override
@@ -171,6 +170,8 @@ public class package2 {
                String packageName = showPackageInputDialog();
                 if (packageName != null && !packageName.isEmpty()) {
                     NpmCommandExecutor.executeDirNpmCommand(sd, "npm", "install", packageName);
+                    installedPackagesModel.addElement(packageName);
+                    refreshPackageList();
             }
         }
         });
@@ -188,7 +189,58 @@ public class package2 {
     }
 
      private static String showPackageInputDialog() {
+
         return JOptionPane.showInputDialog(jFrame, "Enter the package name:", "Add Package", JOptionPane.PLAIN_MESSAGE);
+    }
+
+    // Method to read and display the dependencies from package.json
+    private static void readAndDisplayPackageJson(File directory) {
+        File packageJsonFile = new File(directory, "package.json");
+
+        // Check if package.json file exists
+        if (!packageJsonFile.exists()) {
+            JOptionPane.showMessageDialog(jFrame, "package.json file not found in the selected directory.");
+            return;
+        }
+
+        try {
+            String packageJsonContent = new String(Files.readAllBytes(packageJsonFile.toPath()));
+            Map<String, String> dependencies = parsePackageJson(packageJsonContent);
+
+            installedPackagesModel.clear(); // Clear the list before adding new packages
+
+            if (!dependencies.isEmpty()) {
+                dependencies.forEach(installedPackagesModel::addElement);
+            } else {
+                JOptionPane.showMessageDialog(jFrame, "No dependencies found in package.json.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Method to parse package.json content and extract dependencies
+    private static Map<String, String> parsePackageJson(String jsonContent) {
+        int dependenciesStart = jsonContent.indexOf("\"dependencies\": {");
+        int dependenciesEnd = jsonContent.indexOf("}", dependenciesStart);
+
+        if (dependenciesStart == -1 || dependenciesEnd == -1) {
+            return Map.of();
+        }
+
+        String dependenciesContent = jsonContent.substring(dependenciesStart, dependenciesEnd + 1);
+        dependenciesContent = dependenciesContent.replaceAll(",(?=\\s*\\})", "");
+
+        return Json.createReader(new java.io.StringReader(dependenciesContent))
+                .readObject()
+                .keySet()
+                .stream()
+                .collect(Collectors.toMap(key -> key, key -> ""));
+    }
+
+    // Method to refresh the package list displayed in the GUI
+    private static void refreshPackageList() {
+        installedPackagesList.setModel(installedPackagesModel);
     }
 
     private static JButton createButton(String text) {
