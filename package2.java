@@ -122,55 +122,69 @@ public class package2 {
 
         open.addActionListener(new ActionListener() {
             @Override
-
             public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser();
                 fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
                 int fc = fileChooser.showOpenDialog(null);
-                 if (fc == JFileChooser.APPROVE_OPTION) {
-            final File selectedDirectory = fileChooser.getSelectedFile();
-            sd = selectedDirectory;
-            selectedDirectoryPath = selectedDirectory.getAbsolutePath();
-            System.out.println("Selected directory: " + selectedDirectoryPath);
 
-            try {
-                NpmCommandExecutor.executeNpmCommand("npm", "info", selectedDirectoryPath);
-                NpmCommandExecutor.executeNpmCommand("npm", "list", selectedDirectoryPath);
-                jPanel.removeAll();
-                jPanel.add(Box.createVerticalGlue());
-                jPanel.add(wel);
-                jPanel.add(Box.createRigidArea(new Dimension(0, 30)));
-                jPanel.add(packageListScrollPane); // Add the scrollable list
-                jPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-                jPanel.add(addPackage);
-                jPanel.add(create);
-                jPanel.add(Box.createVerticalGlue());
-                jFrame.revalidate();
-            } catch (NullPointerException ex) {
-                // Handle the IOException, e.g., show an error message
-                JOptionPane.showMessageDialog(jFrame, "Error: Pick a Folder" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                if (fc == JFileChooser.APPROVE_OPTION) {
+                    final File selectedDirectory = fileChooser.getSelectedFile();
+                    sd = selectedDirectory;
+                    selectedDirectoryPath = selectedDirectory.getAbsolutePath();
+                    System.out.println("Selected directory: " + selectedDirectoryPath);
+
+                    try {
+                        NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "info", selectedDirectoryPath);
+                        NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "list", selectedDirectoryPath);
+                        jPanel.removeAll();
+                        jPanel.add(Box.createVerticalGlue());
+                        jPanel.add(wel);
+                        jPanel.add(Box.createRigidArea(new Dimension(0, 30));
+                        jPanel.add(packageListScrollPane); // Add the scrollable list
+                        jPanel.add(Box.createRigidArea(new Dimension(0, 10));
+                        jPanel.add(addPackage);
+                        jPanel.add(create);
+                        jPanel.add(Box.createVerticalGlue());
+                        jFrame.revalidate();
+                        
+                        // After updating the packages list, display them
+                        updateInstalledPackagesList(sd);
+                    } catch (IOException ex) {
+                        // Handle the IOException, e.g., show an error message
+                        JOptionPane.showMessageDialog(jFrame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
             }
-            }}});
+        });
 
         create.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try{
-                    fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-                    fileChooser.showSaveDialog(null);
+                // set file chooser fc to pick folders
+                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                int fc = fileChooser.showSaveDialog(null);
+
+                if (fc == JFileChooser.APPROVE_OPTION) {
                     File selectedDirectory = fileChooser.getSelectedFile();
                     sd = selectedDirectory;
                     selectedDirectoryPath = selectedDirectory.getAbsolutePath();
                     System.out.println("Selected directory: " + selectedDirectoryPath);
                     
-                    NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "init", "-y" );
-                    jFrame.getContentPane().removeAll();
-                    jFrame.repaint();
-                } catch (NullPointerException ex) {
-                        JOptionPane.showMessageDialog(jFrame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    try {
+                        NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "init", "-y" );
+                        updateInstalledPackagesList(sd);
+                        jPanel.revalidate();
+                        
+                        // After creating a new project, update the packages list
 
+                    } catch (IOException ex) {
+                        // Handle the IOException, e.g., show an error message
+                        JOptionPane.showMessageDialog(jFrame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             }
         });
+
 
         addPackage.addActionListener(new ActionListener() {
             @Override
@@ -257,5 +271,26 @@ private static Map<String, String> parsePackageJson(String jsonContent) {
         button.setBackground(Color.BLUE);
         button.setMaximumSize(new Dimension(200, 40));
         return button;
+    }
+private static void updateInstalledPackagesList(File directory) {
+        installedPackagesModel.clear();
+        
+        try {
+            File packageJsonFile = new File(directory, "package.json");
+
+            if (packageJsonFile.exists()) {
+                String packageJsonContent = new String(Files.readAllBytes(packageJsonFile.toPath()));
+                JSONObject jsonObject = new JSONObject(packageJsonContent);
+                JSONObject dependencies = jsonObject.getJSONObject("dependencies");
+
+                if (dependencies != null) {
+                    for (String packageName : dependencies.keySet()) {
+                        installedPackagesModel.addElement(packageName);
+                    }
+                }
+            }
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+        }
     }
 }
