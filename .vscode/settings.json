@@ -1,6 +1,7 @@
 {
     "java.dependency.packagePresentation": "hierarchical",
     "java.project.referencedLibraries": [
-        "lib/**/*.jar"
+        "lib/**/*.jar",
+        "/home/thecount/Downloads/json-20231013.jar"
     ]
 }
