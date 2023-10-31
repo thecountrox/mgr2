@@ -1,4 +1,8 @@
 import javax.swing.*;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -7,6 +11,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.formdev.flatlaf.FlatDarkLaf;
 
 class NpmCommandExecutor {
@@ -84,6 +92,7 @@ public class package2 {
     private static JScrollPane packageListScrollPane;
 
     private static String selectedDirectoryPath = null;
+    private static DefaultListModel<String> installedPackagesModel = new DefaultListModel<>();
     private static File sd;
 
     public static void main(String[] args) {
@@ -110,27 +119,20 @@ public class package2 {
         open = createButton("📂 Open");
         create = createButton("+ Create");
         addPackage = createButton("+ Add Package");
-        addPackage.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Implement code to add a package here
-                // For example, you can open a dialog to input the package name and run 'npm install' to add it
-            }
-        });
 
         open.addActionListener(new ActionListener() {
             @Override
 
-            // TODO: Implement input validation, error handling
-
             public void actionPerformed(ActionEvent e) {
                 fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
                 int fc = fileChooser.showOpenDialog(null);
-                final File selectedDirectory = fileChooser.getSelectedFile();
-                sd = selectedDirectory;
-                selectedDirectoryPath = selectedDirectory.getAbsolutePath();
-                System.out.println("Selected directory: " + selectedDirectoryPath);
+                 if (fc == JFileChooser.APPROVE_OPTION) {
+            final File selectedDirectory = fileChooser.getSelectedFile();
+            sd = selectedDirectory;
+            selectedDirectoryPath = selectedDirectory.getAbsolutePath();
+            System.out.println("Selected directory: " + selectedDirectoryPath);
 
+            try {
                 NpmCommandExecutor.executeNpmCommand("npm", "info", selectedDirectoryPath);
                 NpmCommandExecutor.executeNpmCommand("npm", "list", selectedDirectoryPath);
                 jPanel.removeAll();
@@ -143,23 +145,30 @@ public class package2 {
                 jPanel.add(create);
                 jPanel.add(Box.createVerticalGlue());
                 jFrame.revalidate();
+            } catch (NullPointerException ex) {
+                // Handle the IOException, e.g., show an error message
+                JOptionPane.showMessageDialog(jFrame, "Error: Pick a Folder" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
-        });
+            }}});
 
         create.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // set file chooser fc to pick folders
-                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-                int fc = fileChooser.showSaveDialog(null);
-                File selectedDirectory = fileChooser.getSelectedFile();
-                sd = selectedDirectory;
-                selectedDirectoryPath = selectedDirectory.getAbsolutePath();
-                System.out.println("Selected directory: " + selectedDirectoryPath);
-                
-                NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "init", "-y" );
-                jFrame.getContentPane().removeAll();
-                jFrame.repaint();
+                try{
+                    fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                    fileChooser.showSaveDialog(null);
+                    File selectedDirectory = fileChooser.getSelectedFile();
+                    sd = selectedDirectory;
+                    selectedDirectoryPath = selectedDirectory.getAbsolutePath();
+                    System.out.println("Selected directory: " + selectedDirectoryPath);
+                    
+                    NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "init", "-y" );
+                    jFrame.getContentPane().removeAll();
+                    jFrame.repaint();
+                } catch (NullPointerException ex) {
+                        JOptionPane.showMessageDialog(jFrame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+
+                }
             }
         });
 
@@ -189,6 +198,55 @@ public class package2 {
         return JOptionPane.showInputDialog(jFrame, "Enter the package name:", "Add Package", JOptionPane.PLAIN_MESSAGE);
     }
 
+    private static void readAndDisplayPackageJson(File directory) {
+    File packageJsonFile = new File(directory, "package.json");
+
+    // Check if package.json file exists
+    if (!packageJsonFile.exists()) {
+        JOptionPane.showMessageDialog(jFrame, "package.json file not found in the selected directory.");
+        return;
+    }
+
+    try {
+        String packageJsonContent = new String(Files.readAllBytes(packageJsonFile.toPath()));
+        Map<String, String> dependencies = parsePackageJson(packageJsonContent);
+
+        installedPackagesModel.clear(); // Clear the list before adding new packages
+
+        if (!dependencies.isEmpty()) {
+            dependencies.forEach((packageName, packageVersion) -> {
+                String packageInfo = packageName + " (" + packageVersion + ")";
+                installedPackagesModel.addElement(packageInfo);
+            });
+        } else {
+            JOptionPane.showMessageDialog(jFrame, "No dependencies found in package.json.");
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+
+private static Map<String, String> parsePackageJson(String jsonContent) {
+    Map<String, String> dependencies = new HashMap<>();
+
+    try {
+        JSONObject jsonObject = new JSONObject(jsonContent);
+        JSONObject dependenciesObject = jsonObject.getJSONObject("dependencies");
+
+        if (dependenciesObject != null) {
+            for (String key : dependenciesObject.keySet()) {
+                String value = dependenciesObject.getString(key);
+                dependencies.put(key, value);
+            }
+        }
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+
+    return dependencies;
+}
+
+    
     private static JButton createButton(String text) {
         JButton button = new JButton(text);
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
