@@ -1,4 +1,4 @@
-## ManaGeR^2^
+## ManaGeR<sup>2</sup>
 A Manager for the Package Manager
 
 ### Current State:
