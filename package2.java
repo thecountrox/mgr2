@@ -122,6 +122,9 @@ public class package2 {
         addPackage = createButton("+ Add Package");
         removePackage = createButton("- Remove Package");
 
+        JList<String> list = new JList<>(installedPackagesModel);
+        JScrollPane scrollPane = new JScrollPane(list);
+
         open.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -141,7 +144,7 @@ public class package2 {
                         jPanel.add(Box.createVerticalGlue());
                         jPanel.add(wel);
                         jPanel.add(Box.createRigidArea(new Dimension(0, 30)));
-                        jPanel.add(packageListScrollPane); // Add the scrollable list
+                        jPanel.add(scrollPane);
                         jPanel.add(Box.createRigidArea(new Dimension(0, 10)));
                         jPanel.add(addPackage);
                         jPanel.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -272,7 +275,7 @@ private static Map<String, String> parsePackageJson(String jsonContent) {
     return dependencies;
 }
 
-    
+   
     private static JButton createButton(String text) {
         JButton button = new JButton(text);
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
