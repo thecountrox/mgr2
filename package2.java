@@ -132,27 +132,22 @@ public class package2 {
                     sd = selectedDirectory;
                     selectedDirectoryPath = selectedDirectory.getAbsolutePath();
                     System.out.println("Selected directory: " + selectedDirectoryPath);
-
-                    try {
-                        NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "info", selectedDirectoryPath);
-                        NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "list", selectedDirectoryPath);
+                        readAndDisplayPackageJson(selectedDirectory);
+                        // NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "info", selectedDirectoryPath);
+                        // NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "list", selectedDirectoryPath);
                         jPanel.removeAll();
                         jPanel.add(Box.createVerticalGlue());
                         jPanel.add(wel);
-                        jPanel.add(Box.createRigidArea(new Dimension(0, 30));
+                        jPanel.add(Box.createRigidArea(new Dimension(0, 30)));
                         jPanel.add(packageListScrollPane); // Add the scrollable list
-                        jPanel.add(Box.createRigidArea(new Dimension(0, 10));
+                        jPanel.add(Box.createRigidArea(new Dimension(0, 10)));
                         jPanel.add(addPackage);
                         jPanel.add(create);
                         jPanel.add(Box.createVerticalGlue());
                         jFrame.revalidate();
                         
                         // After updating the packages list, display them
-                        updateInstalledPackagesList(sd);
-                    } catch (IOException ex) {
-                        // Handle the IOException, e.g., show an error message
-                        JOptionPane.showMessageDialog(jFrame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                    }
+                        readAndDisplayPackageJson(sd);
                 }
             }
         });
@@ -170,17 +165,13 @@ public class package2 {
                     selectedDirectoryPath = selectedDirectory.getAbsolutePath();
                     System.out.println("Selected directory: " + selectedDirectoryPath);
                     
-                    try {
                         NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "init", "-y" );
                         updateInstalledPackagesList(sd);
                         jPanel.revalidate();
                         
                         // After creating a new project, update the packages list
 
-                    } catch (IOException ex) {
                         // Handle the IOException, e.g., show an error message
-                        JOptionPane.showMessageDialog(jFrame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                    }
                 }
             }
         });
@@ -192,6 +183,7 @@ public class package2 {
                String packageName = showPackageInputDialog();
                 if (packageName != null && !packageName.isEmpty()) {
                     NpmCommandExecutor.executeDirNpmCommand(sd, "npm", "install", packageName);
+                    updateInstalledPackagesList(sd);
             }
         }
         });
@@ -223,14 +215,19 @@ public class package2 {
 
     try {
         String packageJsonContent = new String(Files.readAllBytes(packageJsonFile.toPath()));
+        System.out.println("Package JSON content: " + packageJsonContent); // Debug print
         Map<String, String> dependencies = parsePackageJson(packageJsonContent);
 
+        packageListTextArea.setText("");
         installedPackagesModel.clear(); // Clear the list before adding new packages
 
         if (!dependencies.isEmpty()) {
             dependencies.forEach((packageName, packageVersion) -> {
-                String packageInfo = packageName + " (" + packageVersion + ")";
-                installedPackagesModel.addElement(packageInfo);
+                String packageInfo = String.format("%-25s %s", packageName, "(" + packageVersion + ")");
+                packageInfo = packageInfo.replace(',', ' ');
+                packageInfo = packageInfo.replace('[', ' ');
+                installedPackagesModel.addElement(packageInfo+"\n");
+                packageListTextArea.setText(installedPackagesModel.toString());
             });
         } else {
             JOptionPane.showMessageDialog(jFrame, "No dependencies found in package.json.");
@@ -272,7 +269,8 @@ private static Map<String, String> parsePackageJson(String jsonContent) {
         button.setMaximumSize(new Dimension(200, 40));
         return button;
     }
-private static void updateInstalledPackagesList(File directory) {
+
+    private static void updateInstalledPackagesList(File directory) {
         installedPackagesModel.clear();
         
         try {
@@ -285,7 +283,7 @@ private static void updateInstalledPackagesList(File directory) {
 
                 if (dependencies != null) {
                     for (String packageName : dependencies.keySet()) {
-                        installedPackagesModel.addElement(packageName);
+                        installedPackagesModel.addElement(packageName+"\n");
                     }
                 }
             }
