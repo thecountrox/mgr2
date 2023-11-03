@@ -87,6 +87,7 @@ public class package2 {
     private static JButton open;
     private static JButton create;
     private static JButton addPackage;
+    private static JButton removePackage;
     private static JLabel wel;
     private static JTextArea packageListTextArea;
     private static JScrollPane packageListScrollPane;
@@ -119,6 +120,7 @@ public class package2 {
         open = createButton("📂 Open");
         create = createButton("+ Create");
         addPackage = createButton("+ Add Package");
+        removePackage = createButton("- Remove Package");
 
         open.addActionListener(new ActionListener() {
             @Override
@@ -142,7 +144,9 @@ public class package2 {
                         jPanel.add(packageListScrollPane); // Add the scrollable list
                         jPanel.add(Box.createRigidArea(new Dimension(0, 10)));
                         jPanel.add(addPackage);
-                        jPanel.add(create);
+                        jPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+                        jPanel.add(removePackage);
+                        jPanel.add(Box.createRigidArea(new Dimension(0,10)));
                         jPanel.add(Box.createVerticalGlue());
                         jFrame.revalidate();
                         
@@ -166,7 +170,7 @@ public class package2 {
                     System.out.println("Selected directory: " + selectedDirectoryPath);
                     
                         NpmCommandExecutor.executeDirNpmCommand(selectedDirectory, "npm", "init", "-y" );
-                        updateInstalledPackagesList(sd);
+                        readAndDisplayPackageJson(selectedDirectory);
                         jPanel.revalidate();
                         
                         // After creating a new project, update the packages list
@@ -180,10 +184,22 @@ public class package2 {
         addPackage.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed( ActionEvent e) {
-               String packageName = showPackageInputDialog();
+               String packageName = showPackageDialog("Add Package");
                 if (packageName != null && !packageName.isEmpty()) {
                     NpmCommandExecutor.executeDirNpmCommand(sd, "npm", "install", packageName);
-                    updateInstalledPackagesList(sd);
+                    readAndDisplayPackageJson(sd);
+            }
+        }
+        });
+
+
+        removePackage.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed( ActionEvent e) {
+               String packageName = showPackageDialog("Remove Package");
+                if (packageName != null && !packageName.isEmpty()) {
+                    NpmCommandExecutor.executeDirNpmCommand(sd, "npm", "uninstall", packageName);
+                    readAndDisplayPackageJson(sd);
             }
         }
         });
@@ -200,8 +216,8 @@ public class package2 {
 
     }
 
-     private static String showPackageInputDialog() {
-        return JOptionPane.showInputDialog(jFrame, "Enter the package name:", "Add Package", JOptionPane.PLAIN_MESSAGE);
+     private static String showPackageDialog(String A) {
+        return JOptionPane.showInputDialog(jFrame, "Enter the package name:", A, JOptionPane.PLAIN_MESSAGE);
     }
 
     private static void readAndDisplayPackageJson(File directory) {
@@ -224,10 +240,9 @@ public class package2 {
         if (!dependencies.isEmpty()) {
             dependencies.forEach((packageName, packageVersion) -> {
                 String packageInfo = String.format("%-25s %s", packageName, "(" + packageVersion + ")");
-                packageInfo = packageInfo.replace(',', ' ');
-                packageInfo = packageInfo.replace('[', ' ');
                 installedPackagesModel.addElement(packageInfo+"\n");
-                packageListTextArea.setText(installedPackagesModel.toString());
+                String installedPackages = installedPackagesModel.toString().replaceAll("(^\\[|\\]$)", "").replace(",","");
+                packageListTextArea.setText(installedPackages);
             });
         } else {
             JOptionPane.showMessageDialog(jFrame, "No dependencies found in package.json.");
@@ -268,27 +283,5 @@ private static Map<String, String> parsePackageJson(String jsonContent) {
         button.setBackground(Color.BLUE);
         button.setMaximumSize(new Dimension(200, 40));
         return button;
-    }
-
-    private static void updateInstalledPackagesList(File directory) {
-        installedPackagesModel.clear();
-        
-        try {
-            File packageJsonFile = new File(directory, "package.json");
-
-            if (packageJsonFile.exists()) {
-                String packageJsonContent = new String(Files.readAllBytes(packageJsonFile.toPath()));
-                JSONObject jsonObject = new JSONObject(packageJsonContent);
-                JSONObject dependencies = jsonObject.getJSONObject("dependencies");
-
-                if (dependencies != null) {
-                    for (String packageName : dependencies.keySet()) {
-                        installedPackagesModel.addElement(packageName+"\n");
-                    }
-                }
-            }
-        } catch (IOException | JSONException e) {
-            e.printStackTrace();
-        }
     }
 }
